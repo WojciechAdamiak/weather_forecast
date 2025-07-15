@@ -19,24 +19,20 @@ FONT_PATH = "fonts/DejaVuSans.ttf"
 def formatuj_podsumowanie(miasto, df):
     df = df.copy()
     df["godzina"] = df["time"].dt.strftime('%H:%M')
-
     temp_max = df["temperature_2m"].max()
     temp_max_hour = df[df["temperature_2m"] == temp_max]["godzina"].iloc[0]
     temp_min = df["temperature_2m"].min()
     temp_min_hour = df[df["temperature_2m"] == temp_min]["godzina"].iloc[0]
 
     opady = df[df["precipitation"] > 0][["godzina", "precipitation"]]
-    if not opady.empty:
-        opady_text = ", ".join(
-            f"{row['precipitation']:.1f} mm o godz. {row['godzina']}"
-            for _, row in opady.iterrows()
-        )
-    else:
-        opady_text = "Brak opadów"
+    opady_text = (
+        ", ".join(f"{row['precipitation']:.1f} mm o godz. {row['godzina']}"
+                  for _, row in opady.iterrows())
+        if not opady.empty else "Brak opadów"
+    )
 
     wiatr_max = df["windspeed_10m"].max()
     wiatr_hour = df[df["windspeed_10m"] == wiatr_max]["godzina"].iloc[0]
-
     wilg_max = df["relative_humidity_2m"].max()
     wilg_max_hour = df[df["relative_humidity_2m"] == wilg_max]["godzina"].iloc[0]
     wilg_min = df["relative_humidity_2m"].min()
@@ -52,39 +48,52 @@ def formatuj_podsumowanie(miasto, df):
     )
 
 def main():
-    podsumowania_miast = []
-    dane_dla_tabeli = []
+    print("🚀 Startuję raport pogodowy...", flush=True)
 
+    # Rejestracja czcionki
     if os.path.exists(FONT_PATH):
         pdfmetrics.registerFont(TTFont("DejaVuSans", FONT_PATH))
+        print("🔤 Czcionka DejaVuSans zarejestrowana", flush=True)
     else:
-        print("⚠️ Czcionka DejaVuSans.ttf nie znaleziona — raport może nie zawierać polskich znaków.")
+        print("⚠️ Czcionka DejaVuSans.ttf nie znaleziona — raport może nie zawierać polskich znaków", flush=True)
 
+    # Style i foldery
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="PolishTitle", fontName="DejaVuSans", fontSize=14, spaceAfter=12))
-
     os.makedirs(CHART_DIR, exist_ok=True)
+    os.makedirs("raporty", exist_ok=True)
+
+    # Wczytanie miast
+    print(f"📥 Wczytuję dane z: {MIASTA_CSV}", flush=True)
     miasta_df = pd.read_csv(MIASTA_CSV, encoding="utf-8")
 
     current_date = START_DATE
     while current_date <= END_DATE:
+        print(f"\n📆 Generuję raport dla dnia: {current_date}", flush=True)
         elements = []
         chart_files = []
+        podsumowania_miast = []
+        dane_dla_tabeli = []
 
         for _, row in miasta_df.iterrows():
             miasto = row["miasto"]
+            print(f"🌍 Przetwarzam miasto: {miasto}", flush=True)
+
             lat, lon = get_coordinates(miasto)
             if lat is None or lon is None:
+                print(f"⚠️ Brak współrzędnych dla {miasto}", flush=True)
                 continue
 
             try:
-                df = pobierz_prognoze(lat, lon)
+                df = pobierz_prognoze(lat, lon, timeout=10)  # dodaj timeout w utils.py!
                 time.sleep(1)
-            except Exception:
+            except Exception as e:
+                print(f"❌ Błąd pobierania danych dla {miasto}: {e}", flush=True)
                 continue
 
             day_df = df[df["date"] == current_date]
             if day_df.empty or len(day_df) < 12:
+                print(f"⚠️ Brak danych godzinowych dla {miasto} w dniu {current_date}", flush=True)
                 continue
 
             godziny = day_df["time"]
@@ -102,30 +111,15 @@ def main():
                 chart_files.append(chart)
             elements.append(PageBreak())
 
-            # Dodaj narracyjne podsumowanie
             podsumowania_miast.append(formatuj_podsumowanie(miasto, day_df))
 
-            # Dodaj dane do tabeli
-            dane_dla_tabeli.append({
-                "miasto": miasto,
-                "max_temp": day_df["temperature_2m"].max(),
-                "min_temp": day_df["temperature_2m"].min(),
-                "opady_text": ", ".join(
-                    f"{row['precipitation']:.1f} mm o godz. {row['time'].strftime('%H:%M')}"
-                    for _, row in day_df[day_df["precipitation"] > 0].iterrows()
-                ) or "Brak opadów",
-                "wiatr_max": day_df["windspeed_10m"].max(),
-                "wilg_max": day_df["relative_humidity_2m"].max(),
-                "wilg_min": day_df["relative_humidity_2m"].min()
-            })
-
-        # Generuj główny raport PDF
         if elements:
             generuj_pdf(elements, str(current_date))
+            print(f"📄 Raport PDF wygenerowany: raport_{current_date}.pdf", flush=True)
 
-        # Generuj PDF z podsumowaniem
         if podsumowania_miast:
             generuj_podsumowanie_pdf(podsumowania_miast, str(current_date))
+            print(f"📑 Raport podsumowujący wygenerowany: podsumowanie_{current_date}.pdf", flush=True)
 
         for chart in chart_files:
             if os.path.exists(chart):
@@ -133,5 +127,11 @@ def main():
 
         current_date += timedelta(days=1)
 
+    print("✅ Raporty gotowe — koniec procesu.\n", flush=True)
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as err:
+        print(f"❌ Błąd ogólny: {err}", flush=True)
+
