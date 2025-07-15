@@ -12,7 +12,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 # === Ścieżki i parametry ===
 MIASTA_CSV = "data/miasta.csv"
 START_DATE = datetime.now().date()
-END_DATE = START_DATE + timedelta(days=0)
+END_DATE = START_DATE  # lub START_DATE + timedelta(days=1)
 CHART_DIR = "charts"
 FONT_PATH = "fonts/DejaVuSans.ttf"
 
