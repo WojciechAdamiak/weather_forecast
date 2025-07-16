@@ -1,20 +1,27 @@
-# Ignoruj pliki tymczasowe Pythona
+# 🔧 Ignoruj pliki Pythonowe
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 
-# Ignoruj raporty PDF (jeśli generowane automatycznie)
-raporty/*.pdf
-
-# Ignoruj wykresy pogodowe
-charts/*.png
-
-# Ignoruj dane wejściowe, jeśli nie chcesz ich śledzić
-data/*.csv
-
-# Ignoruj pliki środowiska/konfiguracji
+# 🔒 Ignoruj konfiguracje i dane wrażliwe
 .env
 *.log
 
-# Ignoruj foldery edytorów
+# 📊 Ignoruj wykresy (PNG), zachowaj PDF-y
+charts/*.png
+
+# 🗂 Ignoruj dane wejściowe (jeśli nie potrzebujesz w repozytorium)
+data/*.csv
+
+# 📄 Raporty PDF — pozwalamy je śledzić
+!raporty/*.pdf
+
+# 💻 Ignoruj foldery edytorów
 .vscode/
 .idea/
+
+# ⚙️ Ignoruj pliki systemowe
+.DS_Store
+Thumbs.db
+
