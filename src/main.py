@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import time
+import random
 from utils import get_coordinates, pobierz_prognoze, make_chart
 from generate_pdf import generuj_pdf, generuj_podsumowanie_pdf
 from reportlab.platypus import Paragraph, Spacer, Image as RLImage, PageBreak
@@ -9,7 +10,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-# === Ścieżki i parametry ===
+# === Parametry projektu ===
 MIASTA_CSV = "data/miasta.csv"
 START_DATE = datetime.now().date()
 DNI_RAPORTU = 3
@@ -49,15 +50,18 @@ def formatuj_podsumowanie(miasto, df):
 def main():
     print("🚀 Startuję raport pogodowy...", flush=True)
 
+    # Czcionka PDF
     if os.path.exists(FONT_PATH):
         pdfmetrics.registerFont(TTFont("DejaVuSans", FONT_PATH))
         print("🔤 Czcionka DejaVuSans zarejestrowana", flush=True)
 
+    # Style i foldery
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="PolishTitle", fontName="DejaVuSans", fontSize=14, spaceAfter=12))
     os.makedirs(CHART_DIR, exist_ok=True)
     os.makedirs("raporty", exist_ok=True)
 
+    # Miasta
     print(f"📥 Wczytuję dane z: {MIASTA_CSV}", flush=True)
     miasta_df = pd.read_csv(MIASTA_CSV, encoding="utf-8")
 
@@ -77,19 +81,28 @@ def main():
 
             lat, lon = get_coordinates(miasto)
             if lat is None or lon is None:
+                print(f"⚠️ Brak współrzędnych dla {miasto}", flush=True)
                 continue
 
-            try:
-                df = pobierz_prognoze(lat, lon, start_str, end_str, timeout=60)
-                df["date"] = pd.to_datetime(df["time"]).dt.date
-                time.sleep(1)
-            except Exception as e:
-                print(f"❌ Błąd: {e}", flush=True)
+            # Retry z opóźnieniem
+            df = pd.DataFrame()
+            for attempt in range(3):
+                try:
+                    df = pobierz_prognoze(lat, lon, start_str, end_str, timeout=60)
+                    df["date"] = pd.to_datetime(df["time"]).dt.date
+                    break
+                except Exception as e:
+                    print(f"⏳ Próba {attempt+1} dla {miasto} nieudana: {e}", flush=True)
+                    time.sleep(5)
+
+            # Sprawdzenie wyniku
+            if df.empty or "time" not in df.columns:
+                print(f"❌ Brak danych prognozy dla {miasto} — pomijam", flush=True)
                 continue
 
             day_df = df[df["date"] == current_date]
             if day_df.empty or len(day_df) < 12:
-                print(f"⚠️ Brak danych dla {miasto} w dniu {current_date}", flush=True)
+                print(f"⚠️ Brak danych godzinowych dla {miasto} w dniu {current_date}", flush=True)
                 continue
 
             godziny = day_df["time"]
@@ -109,22 +122,30 @@ def main():
 
             podsumowania_miast.append(formatuj_podsumowanie(miasto, day_df))
 
+            # Opóźnienie między miastami
+            time.sleep(random.uniform(1.5, 4.0))
+
+        # PDF-y
         if elements:
             generuj_pdf(elements, str(current_date))
+            print(f"📄 Raport PDF wygenerowany: raport_{current_date}.pdf", flush=True)
 
         if podsumowania_miast:
             generuj_podsumowanie_pdf(podsumowania_miast, str(current_date))
+            print(f"📑 Podsumowanie PDF wygenerowane: podsumowanie_{current_date}.pdf", flush=True)
 
+        # Czyść wykresy
         for chart in chart_files:
             if os.path.exists(chart):
                 os.remove(chart)
 
-    print("✅ Raporty gotowe — koniec procesu.\n", flush=True)
+    print("✅ Wszystkie raporty gotowe — koniec procesu.\n", flush=True)
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as err:
         print(f"❌ Błąd ogólny: {err}", flush=True)
+
 
 

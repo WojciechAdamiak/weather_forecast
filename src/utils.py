@@ -33,10 +33,23 @@ def pobierz_prognoze(lat: float, lon: float, start_date: str, end_date: str, tim
         response = requests.get(url, timeout=timeout)
         response.raise_for_status()
         dane = response.json()
+
+        # Sprawdź, czy dane zawierają sekcję 'hourly'
+        if "hourly" not in dane or not isinstance(dane["hourly"], dict):
+            print(f"⚠️ Niepoprawna odpowiedź API — brak danych 'hourly'", flush=True)
+            return pd.DataFrame()
+
         df = pd.DataFrame(dane["hourly"])
+
+        # Weryfikuj obecność kolumny 'time'
+        if "time" not in df.columns:
+            print("⚠️ Odpowiedź API nie zawiera kolumny 'time'", flush=True)
+            return pd.DataFrame()
+
         df["time"] = pd.to_datetime(df["time"])
         df["date"] = df["time"].dt.date
         return df
+
     except Exception as e:
         print(f"❌ Błąd pobierania prognozy z Open-Meteo: {e}", flush=True)
         return pd.DataFrame()
@@ -45,6 +58,12 @@ def pobierz_prognoze(lat: float, lon: float, start_date: str, end_date: str, tim
 def make_chart(values, godziny, title, ylabel, color, filename, miasto, current_date, chart_type="line") -> str:
     try:
         fig, ax = plt.subplots(figsize=(9, 4.5))
+
+        # Upewnij się, że dane nie są puste
+        if values.empty or godziny.empty:
+            print(f"⚠️ Brak danych do wykresu: {filename}_{miasto}_{current_date}", flush=True)
+            plt.close(fig)
+            return ""
 
         if chart_type == "bar":
             ax.bar(godziny, values, color=color, width=0.03)
@@ -64,6 +83,7 @@ def make_chart(values, godziny, title, ylabel, color, filename, miasto, current_
         fig.savefig(chart_path)
         plt.close(fig)
         return chart_path
+
     except Exception as e:
-        print(f"❌ Błąd tworzenia wykresu: {e}", flush=True)
+        print(f"❌ Błąd tworzenia wykresu dla {miasto}: {e}", flush=True)
         return ""
