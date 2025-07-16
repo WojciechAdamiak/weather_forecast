@@ -3,7 +3,7 @@ name: Codzienny raport pogodowy
 on:
   schedule:
     - cron: '0 20 * * *'  # codziennie o 20:00 UTC = 22:00 czasu polskiego (letniego)
-  workflow_dispatch:      # możliwość ręcznego uruchomienia
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
       - name: 🛎️ Pobierz repozytorium
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # potrzebne do pushowania commitów
+          fetch-depth: 0
 
       - name: 🐍 Zainstaluj Pythona
         uses: actions/setup-python@v4
@@ -31,12 +31,17 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-      - name: 📤 Dodaj raporty do repozytorium
+      - name: 📤 Dodaj i wypchnij raporty PDF (jeśli są nowe)
         run: |
-          git add raporty/*.pdf
-          git commit -m "📄 Raport pogodowy z $(date +'%Y-%m-%d')"
-          git push
+          git add raporty/*.pdf || true
+          if git diff --cached --quiet; then
+            echo "🚫 Brak nowych raportów PDF – pomijam commit i push"
+          else
+            git commit -m "📄 Raport pogodowy z $(date +'%Y-%m-%d')"
+            git push
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
 
