@@ -85,7 +85,7 @@ def main():
                 continue
 
             try:
-                df = pobierz_prognoze(lat, lon, timeout=10)  # dodaj timeout w utils.py!
+                df = pobierz_prognoze(lat, lon, timeout=30)  # dodaj timeout w utils.py!
                 time.sleep(1)
             except Exception as e:
                 print(f"❌ Błąd pobierania danych dla {miasto}: {e}", flush=True)
