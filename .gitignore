@@ -1,0 +1,20 @@
+# Ignoruj pliki tymczasowe Pythona
+__pycache__/
+*.py[cod]
+
+# Ignoruj raporty PDF (jeśli generowane automatycznie)
+raporty/*.pdf
+
+# Ignoruj wykresy pogodowe
+charts/*.png
+
+# Ignoruj dane wejściowe, jeśli nie chcesz ich śledzić
+data/*.csv
+
+# Ignoruj pliki środowiska/konfiguracji
+.env
+*.log
+
+# Ignoruj foldery edytorów
+.vscode/
+.idea/
