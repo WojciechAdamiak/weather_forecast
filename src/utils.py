@@ -21,11 +21,12 @@ def get_coordinates(city: str) -> tuple[float | None, float | None]:
 
     return None, None
 
-# ☁️ Pobieranie prognozy pogody z Open-Meteo
-def pobierz_prognoze(lat: float, lon: float, timeout: int = 10) -> pd.DataFrame:
+# ☁️ Pobieranie prognozy pogody z Open-Meteo (dla wielu dni)
+def pobierz_prognoze(lat: float, lon: float, start_date: str, end_date: str, timeout: int = 30) -> pd.DataFrame:
     url = (
         f"https://api.open-meteo.com/v1/forecast?"
         f"latitude={lat}&longitude={lon}&timezone=Europe/Warsaw&"
+        f"start_date={start_date}&end_date={end_date}&"
         f"hourly=temperature_2m,precipitation,windspeed_10m,relative_humidity_2m"
     )
     try:
@@ -44,6 +45,7 @@ def pobierz_prognoze(lat: float, lon: float, timeout: int = 10) -> pd.DataFrame:
 def make_chart(values, godziny, title, ylabel, color, filename, miasto, current_date, chart_type="line") -> str:
     try:
         fig, ax = plt.subplots(figsize=(9, 4.5))
+
         if chart_type == "bar":
             ax.bar(godziny, values, color=color, width=0.03)
         else:
@@ -65,5 +67,3 @@ def make_chart(values, godziny, title, ylabel, color, filename, miasto, current_
     except Exception as e:
         print(f"❌ Błąd tworzenia wykresu: {e}", flush=True)
         return ""
-
-
